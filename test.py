@@ -1,16 +1,14 @@
-# import pandas as pd 
-# import xlwings as xw
+import pandas as pd 
+import xlwings as xw
+import re
 
+path  = r"C:\Users\mnguy\Downloads\Report Scan Verify Shiftly (RCV) (4).xlsm"
+wb = xw.Book(path,update_links=False)
+wb.save()
+user_input = input('Please input the sheet name you want detele form n to n: ').strip()
+chosse = re.split('\D+', user_input)
 
-# path  = r"C:\Users\3601183\Desktop\Report Scan Verify Shiftly (RCV).xlsm"
-# des_path  = r"C:\Users\3601183\Desktop\data_input.xlsx"
-# wb = xw.Book(des_path,update_links=False)
-# ws = wb.sheets['Sheet1']
-# df = pd.read_excel(path,sheet_name='dsa',usecols=[5,12,6,7,19])
+for i in range(int(chosse[0]), int(chosse[1]) + 1):
+    sheet_name = f'Sheet{i}'
+    wb.sheets[sheet_name].delete()
 
-# df = df[['Unnamed: 5','Unnamed: 12','Unnamed: 7','Unnamed: 6','Unnamed: 19']]
-# for i in ['A','B','C','D']:
-#     ws.range(f'{i}:{i}').number_format ='@'
-
-# ws.range('A1').value = df.values
-# print(df)
