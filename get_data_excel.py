@@ -88,101 +88,22 @@ df_detail = get_detail_data(get_detail_sheet_name(wb,before_sheets))
 name_vendor = df_detail['Name 1'].unique()
 
 
-def choose_vendor(vendor:list) -> list[str]:
-    for i,name in enumerate(vendor):
-        print(f'{i} : {name} ')
-    user_input = input("Vui lòng chọn nhà cung cấp bạn muốn chạy auto bằng số thứ tự:    ").strip()
-    vendor_list  = [vendor[int(i)] for i in re.split(r'\D+',user_input)]
-    return vendor_list
+for i,name in enumerate(name_vendor):
+    print(f'{i} : {name} ')
+user_input = input("Vui lòng chọn nhà cung cấp bạn muốn chạy auto bằng số thứ tự:    ").strip()
+vendor_list  = [name_vendor[int(i)] for i in re.split('\D+',user_input)]
 
-
- 
-def get_data_by_mpn(data:pd.DataFrame)->pd.DataFrame:
-    df_mpn  = []
-    mpn_list = data['Masked MPN'].unique()
-    for i in mpn_list:
-            data_mpn = data[data['Masked MPN'] == i].reset_index(drop=True)
-            df_mpn.append(data_mpn)
-    return df_mpn
-        
-
-
-
-
-def random_dataframe(data_list : list[pd.DataFrame]) -> list:
-    random_data = []
-    user_input = int(input('Nhập số lượng dòng dữ liệu mà bạn muốn lấy ngẫu nhiên từ mỗi MPN nhỏ nhất là 1 lớn nhất là 10 : ').strip())
-    os.system('cls')
-    if user_input in range(1,11):
-         for data in data_list:
-             temp_df = []
-             if len(data) > user_input:
-                 while len(data) > 0:
-                    left = rd.randint(0, len(data)-1)%11
-                    right = rd.randint(0, len(data)-1)%11
-                    if left < right:
-                        temp_df.append(data.iloc[left:right])
-                        data.drop(index=range(left,right), inplace=True)
-                   
-
-                    elif left > right:
-                        temp_df.append(data.iloc[right:left])
-                        data.drop(index=range(right,left), inplace=True)
-                        
-                   
-                    else:
-                          temp_df.append(data.iloc[left:left+1])
-                          data.drop(index=left, inplace=True)
-                    data.reset_index(drop=True, inplace=True)
-                     
-               
-             else:
-                 temp_df.append(data)
-             random_data.append(pd.concat(temp_df, ignore_index=True))
-         return random_data
-         
-
-    else:
-        print('Số lượng dòng dữ liệu bạn nhập không hợp lệ vui lòng nhập lại từ 1 đến 10')
-        return random_dataframe(data_list)
-    
-
-
-
-def get_data_vendor(vendor_list:list,data:pd.DataFrame)->pd.DataFrame:
-    df_vendor = []
-    for vendor in vendor_list:
-        df_temp = data[data['Name 1'] == vendor]
-        df_vendor.append(df_temp)
-    return pd.concat(df_vendor, ignore_index=True)
-
-def get_success_data(data:list[pd.DataFrame],vendor,callback) -> pd.DataFrame:
-    success_data = pd.concat(data,ignore_index=True)
-    print(f'Dữ liệu đã được lấy ngẫu nhiên từ mỗi MPN {success_data}')
-    success_data = success_data.astype(str)
-    success_data['GRN Number'] = success_data['GRN Number'].apply(lambda x: '9K' + x if not x.startswith('9K') else x)
-    success_data = callback(vendor,success_data)
-    print(f'Dữ liệu đã được lọc theo nhà cung cấp {success_data['Name 1'].unique()} : {success_data}')
-    success_data = success_data[['GRN Number','Masked MPN','Vendor Date Code','Lot number','Quantity']]
-    return success_data
-
-success_data = get_success_data(random_dataframe(get_data_by_mpn(df_detail)), choose_vendor(name_vendor), get_data_vendor)
-# Save the success data to an Excel file
-def write_to_excel(data: pd.DataFrame):
-    for i in ['A', 'B', 'C', 'D', 'E']:
-        ws_data.range(f'{i}:{i}').number_format = '@'
-    ws_data.range('A1').value = [success_data.columns.tolist()] + success_data.values.tolist()
-    wb_data.save()
-    wb_data.close()
-
-def clear_sheet()->None:
-    ws_data.range('A2').expand().clear_contents()
-def delete_detail_sheet(sheets_name:list[str])->None:
-    for sheet in sheets_name:
-        if sheet in wb.sheets:
-            wb.sheets[sheet].delete()
-    wb.save()
-
-delete_detail_sheet(get_detail_sheet_name(wb,before_sheets))   
-clear_sheet()
-write_to_excel(success_data)
+after_df = []
+def before_data_process(vendor:list)-> pd.DataFrame:
+    left_random = rd.randint(1,10)
+    right_random = rd.randint(1,10)
+    head_index = 0
+    for name in vendor:
+        temp_df = df_detail[df_detail['Name 1'] == name]
+        mpn_list = temp_df[temp_df.columns[1]].unique().tolist()
+        for mpn in mpn_list:
+            mpn_df = temp_df[temp_df[temp_df.columns[1]]== mpn]
+            if left_random <= right_random:
+                    
+                    after_df.append(mpn_df.head(left_random))
+                    mpn_df.drop(mpn_df.iloc[head_index:left_random])
