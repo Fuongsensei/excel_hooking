@@ -2,6 +2,7 @@
 import random as rd
 from pywinauto import Application
 from pywinauto import WindowSpecification
+from pywinauto import ElementNotFoundError
 import keyboard as kb
 import psutil as ps
 import time 
@@ -18,13 +19,14 @@ from ctypes import wintypes
 import pythoncom
 from my_thread import wait_printing, is_printing,is_alt_l
 from pynput import keyboard
-from math import modf
-global count 
-count  = 0
-# def random_phi()->float:
-#     phi = (1+5**0.5 )/2
-#     frac = modf(time.time())
+
+global second
+second :int = 60
+global inattenion
+inattenion : int = 10
+
 def pressed_alt_l(key)->None:
+        global inattenion
         if key ==keyboard.Key.alt_l:
                 is_alt_l.clear()
         if key ==keyboard.Key.home:
@@ -32,16 +34,18 @@ def pressed_alt_l(key)->None:
                 is_alt_l.set()
         if key == keyboard.Key.esc:
             os._exit(0)
+        if key == keyboard.Key.down and inattenion > 0:
+            inattenion=-1
+            print(inattenion)
+        if key == keyboard.Key.up and inattenion <101:
+            inattenion=+1
+            print(inattenion)
                 
-
-
 
 
 
 def get_data(path)->pd.DataFrame:
     data  = pd.read_excel(path).values
-    for i in data:
-        i[0] = '9K'+str(i[0])
     return data
 
 
@@ -68,7 +72,8 @@ def get_group_ui(form:WindowSpecification)->WindowSpecification:
     try:
         return{
                 'group_jabil' : form.child_window(title='Jabil Information',control_type='Group'),
-                'group_vendor': form.child_window(title="Vendor Information", control_type="Group")
+                'group_vendor': form.child_window(title="Vendor Information", control_type="Group"),
+                'good_receipt': form.child_window(title='GoodReceipt Information',control_type="Group")
         }
     except:
         print('Kiểm tra xem đã bật GRN Verify lên hay chưa')
@@ -77,18 +82,23 @@ def get_group_ui(form:WindowSpecification)->WindowSpecification:
 try:
     group_jabil = get_group_ui(get_form(hook_process()))['group_jabil']
     group_vendor = get_group_ui(get_form(hook_process()))['group_vendor']
+    good_receipt = get_group_ui(get_form(hook_process()))['good_receipt']
 
 except Exception as e:
     print(f'Error {e}')
     print('Không thể lấy children do cửa sổ GRN Verify chưa được bật vui lòng kiểm tra lại')
     os._exit(0)
 
+save_and_close = good_receipt.child_window(title="SAVE & CLose", control_type="Button")
 def create_UI_mapping(three_ui) -> dict:
     mapping_UI = []
-    all_edits= three_ui.descendants(control_type='Edit')
-    for  edit in all_edits:
-        mapping_UI.append(edit)
-    return mapping_UI
+    try:
+        all_edits= three_ui.descendants(control_type='Edit')
+        for  edit in all_edits:
+            mapping_UI.append(edit)
+        return mapping_UI
+    except ElementNotFoundError:
+            print('Kiểm tra xem đã bật tool verify chưa')
 
 
 element_UI = create_UI_mapping(group_vendor)
@@ -98,6 +108,7 @@ def custom_kb(s:str)->None:
     
 EVENT_SYSTEM_FOREGROUND= 0x0003
 HOOK_OUT_OF_CONTEXT = 0x0000
+
 
 WIN_WRAPER_FUNC = ctypes.WINFUNCTYPE(
         None,
@@ -130,27 +141,7 @@ def write_hooking(data:pd.DataFrame,group_vendor,group_jabil:WindowSpecification
         is_alt_l.wait()
         for i in range(0,len(data)):
             text_grn.set_focus()
-            custom_kb('ctrl+a')
-            mt.foreground.wait()
-            is_alt_l.wait()
-            custom_kb('backspace')
-            mt.foreground.wait()
-            is_alt_l.wait()
-            pyperclip.copy(data[i][0])
-            mt.foreground.wait()
-            is_alt_l.wait()
-            custom_kb('ctrl+v')
-            mt.foreground.wait()
-            is_alt_l.wait()
-            custom_kb('enter')
-            mt.foreground.wait()
-            is_alt_l.wait()
-            time.sleep(.4)
-            mt.foreground.wait()
-            is_alt_l.wait()
-
-
-            for j in range(1,len(data[i])):
+            for j in range(0,len(data[i])):
                 mt.foreground.wait()
                 is_alt_l.wait()
                 custom_kb('ctrl+a')
@@ -171,7 +162,9 @@ def write_hooking(data:pd.DataFrame,group_vendor,group_jabil:WindowSpecification
                 is_alt_l.wait()
                 
             kb.press_and_release('enter')
+            rd.randint(0,10)
         mt.is_done.set()
+        save_and_close.click()
         os._exit(0)
         is_printing.set()
         return
@@ -184,16 +177,17 @@ def write_hooking(data:pd.DataFrame,group_vendor,group_jabil:WindowSpecification
 
 
 def callback(hwWinEvent,event,hdwn,idObject,idChild,dwEventThread,dwmsEventTime):
-        
-        global count
+        global second
         if win32gui.GetWindowText(hdwn) =='HCM GOOD RECEIPT VERIFICATION':
             mt.foreground.set()
             wait_printing.clear()
+            second = 60
             print(f'\nWINDOW : {win32gui.GetWindowText(hdwn)} [FOCUS]')
         else:
             print(f'\nWINDOW : {win32gui.GetWindowText(hdwn)} [FOCUS]')
             wait_printing.set()
             mt.foreground.clear()
+            
         
             
 
@@ -210,23 +204,26 @@ hook = ctypes.windll.user32.SetWinEventHook(
 )
 def time_return(event:threading.Event,event_child:threading.Event)->None:
         while True:
-            second:int = 50
-            for i in range(0,second+1):
+            global second
+            while second > 0:
                 event_child.wait()
                 if second <1:
                     os._exit(0)
-                elif event.is_set() == False:
+                else:
                     time.sleep(1)
                     print(f'\n[  Count down :{second}  ]')
                     second-=1
+                    
+                
+                
 
 
 def main()->None:
         listener = keyboard.Listener(on_press=pressed_alt_l)
-        data = get_data(r"C:\Users\3601183\Desktop\data_input.xlsx")
+        data = get_data(r"C:\Users\3601183\Documents\data\data.xlsx")
         task_1 = threading.Thread(target=print_waiting)
         task_2 = threading.Thread(target=write_hooking,args=(data,group_vendor,group_jabil))
-        task_3 = threading.Thread(target=time_return,args=(is_printing,wait_printing))
+        task_3 = threading.Thread(target=time_return,args=(mt.reset_time,wait_printing))
         task_1.start()
         mt.foreground.set()
         task_2.start()
@@ -237,7 +234,7 @@ def main()->None:
         task_2.join()
         task_3.join()
         listener.stop()
-
+is_printing.set()
 main()
 
 

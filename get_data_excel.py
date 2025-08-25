@@ -11,7 +11,7 @@ from xlwings import Book
 
 
 # Define the path to the Excel file and the data input file
-path = r"C:\Users\mnguy\Downloads\Report Scan Verify Shiftly (RCV) (4).xlsm"
+path = r"C:\Users\3601183\Desktop\Report Scan Verify Shiftly (RCV).xlsm"
 # Open the Excel file with xlwings
 wb = xw.Book(path,update_links=False)
 ws = wb.sheets['Summary']
@@ -36,17 +36,16 @@ ws_data = wb_data.sheets['data']
 
 def get_location_and_df(path:str ,name : str)-> dict:
 
-     df = pd.read_excel(path,sheet_name=name,keep_default_na=True,usecols=[0,1,2,3,4,5,6,7,8,9])
-     col_name = ['Site','Shift','Keyin Type','Status','Check Wrong Batch','Check Date code','Check Lot No','Media Code','Total','Percent']
-     df.columns = col_name
-     filter_na = df[~df['Status'].isna()]
-
-     col_index  = filter_na.columns.tolist().index('Total')+1
-     print(f'col_index : {col_index}')
-     filter_df = filter_na[filter_na['Status'] == 'Verification scan incomplete']
-     row_index = filter_df.index.tolist()
-     return{'col_index': col_index,
-             'row_index': row_index}
+    df = pd.read_excel(path,sheet_name=name,keep_default_na=True,usecols=[0,1,2,3,4,5,6,7,8,9])
+    col_name = ['Site','Shift','Keyin Type','Status','Check Wrong Batch','Check Date code','Check Lot No','Media Code','Total','Percent']
+    df.columns = col_name
+    filter_na = df[~df['Status'].isna()]
+    col_index  = filter_na.columns.tolist().index('Total')+1
+    print(f'col_index : {col_index}')
+    filter_df = filter_na[filter_na['Status'] == 'Verification scan incomplete']
+    row_index = filter_df.index.tolist()
+    return{'col_index': col_index,
+            'row_index': row_index}
 
 
 
@@ -171,9 +170,18 @@ def write_to_excel(data: pd.DataFrame):
     ws_data.range('A1').value = [success_data.columns.tolist()] + success_data.values.tolist()
     wb_data.save()
     wb_data.close()
+    print('[ Đã ghi dữ liệu xong ]')
 
-def clear_sheet()->None:
-    ws_data.range('A2').expand().clear_contents()
+def clear_sheet(ws)->None:
+    last_row = ws.range('A'+str(ws.cells.last_cell.row)).end('up').row
+    try:
+        if last_row > 1:
+            ws.range(f'A1:E{last_row}').clear_contents()
+        print(ws.range(f'A1:E{last_row}'))
+    except:
+        print(ws.range(f'A1:E{last_row}'))
+        print('Đã có lỗi xảy ra')
+
 def delete_detail_sheet(sheets_name:list[str])->None:
     for sheet in sheets_name:
         if sheet in wb.sheets:
@@ -181,5 +189,5 @@ def delete_detail_sheet(sheets_name:list[str])->None:
     wb.save()
 
 delete_detail_sheet(get_detail_sheet_name(wb,before_sheets))   
-clear_sheet()
+clear_sheet(ws_data)
 write_to_excel(success_data)
