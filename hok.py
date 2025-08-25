@@ -35,10 +35,10 @@ def pressed_alt_l(key)->None:
         if key == keyboard.Key.esc:
             os._exit(0)
         if key == keyboard.Key.down and inattenion > 0:
-            inattenion=-1
+            inattenion-=1
             print(inattenion)
-        if key == keyboard.Key.up and inattenion <101:
-            inattenion=+1
+        if key == keyboard.Key.up and inattenion <100:
+            inattenion+=1
             print(inattenion)
                 
 
